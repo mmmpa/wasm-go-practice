@@ -9,7 +9,7 @@
 
   const process = { env: {} }
 
-  function exit(code) {
+  function exit (code) {
     if (code !== 0) {
       console.warn("exit code:", code)
     }
@@ -325,10 +325,18 @@
 })()
 
 export default async function loadAndCompile () {
+  const fetchStart = Date.now()
   let resp = await fetch("http://localhost:1323/validation.wasm")
+  const fetchingTime = Date.now() - fetchStart
+
+  const compilationStart = Date.now()
   let bytes = await resp.arrayBuffer()
   await go.compile(bytes)
-  console.log('wasm ready')
+  const compilationTime = Date.now() - compilationStart
 
-  return go
+  return {
+    fetchingTime,
+    compilationTime,
+    go,
+  }
 }

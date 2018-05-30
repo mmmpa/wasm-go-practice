@@ -232,7 +232,7 @@
 				}
 			};
 
-			inst = await WebAssembly.instantiate(mod, importObject);
+			inst = inst || await WebAssembly.instantiate(mod, importObject);
 			values = [
 				undefined,
 				null,

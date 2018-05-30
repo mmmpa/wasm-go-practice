@@ -1,8 +1,15 @@
 <template lang="pug">
-  article(v-if="!sent")
+  article
     .col-sm-4.col-sm-offset-4
       h1 Message Form
-      form(@submit.prevent="submit")
+      section
+        p(v-if="preparing")
+          i.fa.fa-pulse.fa-spinner.space
+          | loading wasm...
+        P(v-else)
+          | fetching time: {{ fetchingTime }} ms <br/>
+          | compilation time: {{ compilationTime }} ms
+      form(v-if="!sent" @submit.prevent="submit")
         ErrorFormWrapper(:errors="errors" name="name")
           .form-group
             label Name
@@ -34,13 +41,12 @@
           button.btn.btn-success(:disabled="disabled")
             i.fa.fa-paw
             | Submit
-  article(v-else)
-    .col-sm-4.col-sm-offset-4
-      h1 Thank you.
-      .form-group.top-space
-        button.btn.btn-success(@click="reset")
-          i.fa.fa-envelope
-          | Create new message
+      section(v-else)
+        h2 Thank you.
+        .form-group.top-space
+          button.btn.btn-success(@click="reset")
+            i.fa.fa-envelope
+            | Create new message
 </template>
 
 <script>
@@ -65,12 +71,17 @@
       ErrorFormWrapper
     },
     async created () {
-      this.status = 'wasm'
-      this.go = await loadAndCompile().catch(console.error)
+      this.status = 'preparation'
+      Object.assign(this, await loadAndCompile())
       this.status = ''
     },
     data () {
-      return initialData()
+      return {
+        fetchingTime: null,
+        compilationTime: null,
+        go: null,
+        ...initialData(),
+      }
     },
     computed: {
       disabled () {
@@ -83,12 +94,20 @@
         return this.status === 'sending'
       },
       preparing () {
-        return this.status === 'wasm'
+        return this.status === 'preparation'
       },
     },
     methods: {
       reset () {
         Object.assign(this, initialData())
+      },
+      parseErrors (raw) {
+        this.errors = raw.reduce((a, { field, reason }) => {
+          const key = snakeCase(field)
+          const store = a[key] || (a[key] = [])
+          store.push(reason)
+          return a
+        }, {})
       },
       async validate () {
         const {
@@ -102,14 +121,6 @@
             JSON.stringify({ name, email, body })
           )
         )
-      },
-      parseErrors (raw) {
-        this.errors = raw.reduce((a, { field, reason }) => {
-          const key = snakeCase(field)
-          const store = a[key] || (a[key] = [])
-          store.push(reason)
-          return a
-        }, {})
       },
       async submit () {
         const {
@@ -145,6 +156,10 @@
 <style scoped>
   button {
     width: 100%
+  }
+
+  .space {
+    margin-right: 0.5em;
   }
 
   .top-space {
