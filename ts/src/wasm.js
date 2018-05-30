@@ -324,7 +324,7 @@
   }
 })()
 
-export default async function loadAndCompile () {
+export async function loadAndCompile () {
   const fetchStart = Date.now()
   let resp = await fetch("http://localhost:1323/validation.wasm")
   const fetchingTime = Date.now() - fetchStart

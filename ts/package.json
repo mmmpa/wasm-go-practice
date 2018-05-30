@@ -10,6 +10,7 @@
     "build": "node build/build.js"
   },
   "dependencies": {
+    "@types/axios": "^0.14.0",
     "axios": "^0.18.0",
     "snake-case": "^2.1.0",
     "vue": "^2.5.2"

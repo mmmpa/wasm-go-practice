@@ -6,22 +6,22 @@
 </template>
 
 <script lang="ts">
-  import Vue from 'vue';
-  type Prop<T> = () => T
+  import Vue from 'vue'
+  import { ErrorMessages } from '../types'
 
   export default Vue.extend({
     props: {
-      errors: Object as Prop<{ [key: string]: string[] }>,
+      errors: Object as () => ErrorMessages,
       name: String,
     },
     computed: {
-      hasError(): number {
+      hasError (): number {
         return this.myErrors.length
       },
-      myErrors(): string[] {
+      myErrors (): string[] {
         return this.errors[this.name] || []
-      }
-    }
+      },
+    },
   })
 </script>
 

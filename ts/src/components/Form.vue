@@ -10,7 +10,7 @@
           | fetching time: {{ fetchingTime }} ms <br/>
           | compilation time: {{ compilationTime }} ms
       form(v-if="!sent" @submit.prevent="submit")
-        ErrorFormWrapper(:errors="errors" name="name")
+        ErrorFormWrapper(:errors="parsedErrors" name="name")
           .form-group
             label Name
             input.form-control(
@@ -19,7 +19,7 @@
             placeholder="ex: Tsuyoshi Kaneita"
             :disabled="disabled"
             )
-        ErrorFormWrapper(:errors="errors" name="email")
+        ErrorFormWrapper(:errors="parsedErrors" name="email")
           .form-group
             label Mail address
             input.form-control(
@@ -28,7 +28,7 @@
             placeholder="ex: tk@example.com"
             :disabled="disabled"
             )
-        ErrorFormWrapper(:errors="errors" name="body")
+        ErrorFormWrapper(:errors="parsedErrors" name="body")
           .form-group
             label Message
             input.form-control(
@@ -50,67 +50,89 @@
 </template>
 
 <script lang="ts">
-  import Vue from 'vue';
+  import Vue from 'vue'
   import ax from 'axios'
   import ErrorFormWrapper from './ErrorFormWrapper'
   import snakeCase from 'snake-case'
-  import loadAndCompile from '../wasm'
+  import { loadAndCompile } from '../wasm'
+  import { ValidationResult, ErrorDetail, ErrorMessages, CompilationResult } from '../types'
 
-  function initialData() {
+  enum Status {
+    Ready = 'Ready',
+    Sent  = 'Sent',
+    Sending  = 'Sending',
+    Preparing = 'Preparing',
+  }
+
+  function initialData () {
     return {
       name: '',
       email: '',
       body: '',
-      errors: {},
-      status: '',
+      errors: [],
     }
+  }
+
+  function parseErrors (errors: ErrorDetail[]): ErrorMessages {
+    return errors.reduce((a, { field, reason }) => {
+      const key: string     = snakeCase(field)
+      const store: string[] = a[key] || (a[key] = [])
+      store.push(reason)
+      return a
+    }, {})
   }
 
   export default Vue.extend({
     name: 'Form',
     components: {
-      ErrorFormWrapper
+      ErrorFormWrapper,
     },
-    async created() {
-      this.status = 'preparation'
-      Object.assign(this, await loadAndCompile())
-      this.status = ''
+    async created () {
+      this.status  = Status.Preparing
+      const result = await loadAndCompile() as CompilationResult
+      Object.assign(this, result)
+      this.status = Status.Ready
     },
-    data() {
+    data (): {
+      name: string,
+      email: string,
+      body: string,
+      errors: ErrorDetail[],
+      status: Status,
+      fetchingTime: number,
+      compilationTime: number,
+      go: any,
+    } {
       return {
         fetchingTime: null,
         compilationTime: null,
         go: null,
+        status: Status.Preparing,
         ...initialData(),
       }
     },
     computed: {
-      disabled(): Boolean {
+      disabled (): Boolean {
         return this.preparing || this.sending
       },
-      sent(): Boolean {
-        return this.status === 'sent'
+      sent (): Boolean {
+        return this.status === Status.Sent
       },
-      sending(): Boolean {
-        return this.status === 'sending'
+      sending (): Boolean {
+        return this.status === Status.Sending
       },
-      preparing(): Boolean {
-        return this.status === 'preparation'
+      preparing (): Boolean {
+        return this.status === Status.Preparing
+      },
+      parsedErrors (): ErrorMessages {
+        return parseErrors(this.errors)
       },
     },
     methods: {
-      reset() {
+      reset () {
         Object.assign(this, initialData())
       },
-      parseErrors(raw) {
-        this.errors = raw.reduce((a, {field, reason}) => {
-          const key   = snakeCase(field)
-          const store = a[key] || (a[key] = [])
-          store.push(reason)
-          return a
-        }, {})
-      },
-      async validate() {
+      async validate () {
         const {
                 name,
                 email,
@@ -119,34 +141,35 @@
 
         return JSON.parse(
           await this.go.run(
-            JSON.stringify({name, email, body})
-          )
-        )
+            JSON.stringify({ name, email, body }),
+          ),
+        ) as ValidationResult
       },
-      async submit() {
+      async submit () {
         const {
                 name,
                 email,
                 body,
               } = this
 
-        const {valid, errors} = await this.validate()
+        const { valid, errors }: ValidationResult = await this.validate()
 
         if (!valid) {
-          this.parseErrors(errors)
+          this.errors = errors
           return
         }
 
-        this.status = 'sending'
+        this.status = Status.Sending
         try {
           await ax.post(
             'http://localhost:1323/api/messages',
-            {name, email, body},
+            { name, email, body },
           )
-          this.status = 'sent'
-        } catch ({response: {data: {errors}}}) {
-          this.parseErrors(errors)
-          this.status = ''
+          this.errors = []
+          this.status = Status.Sent
+        } catch ({ response: { data: { errors } } }) {
+          this.errors = errors
+          this.status = Status.Ready
         }
       },
     },
