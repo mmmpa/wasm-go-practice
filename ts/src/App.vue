@@ -1,18 +1,15 @@
-<template>
-  <div id="app">
-    <img src="./assets/logo.png">
-    <HelloWorld />
-  </div>
+<template lang="pug">
+  Form
 </template>
 
 <script lang="ts">
   import Vue from 'vue';
-  import HelloWorld from './components/HelloWorld'
+  import Form from './components/Form'
 
   export default Vue.extend({
     name: 'App',
     components: {
-      HelloWorld
+      Form
     }
   })
 </script>
