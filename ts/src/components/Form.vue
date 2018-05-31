@@ -51,16 +51,17 @@
 
 <script lang="ts">
   import Vue from 'vue'
-  import ax from 'axios'
   import ErrorFormWrapper from './ErrorFormWrapper'
   import snakeCase from 'snake-case'
   import { loadAndCompile } from '../wasm'
-  import { ValidationResult, ErrorDetail, ErrorMessages, CompilationResult } from '../types'
+  import { ErrorMessages } from '../types'
+  import { ValidationResult, ErrorDetail } from '../../validation/assembly/types'
+  import { createMessage } from '../libs/api'
 
   enum Status {
-    Ready = 'Ready',
-    Sent  = 'Sent',
-    Sending  = 'Sending',
+    Ready     = 'Ready',
+    Sent      = 'Sent',
+    Sending   = 'Sending',
     Preparing = 'Preparing',
   }
 
@@ -79,7 +80,7 @@
       const store: string[] = a[key] || (a[key] = [])
       store.push(reason)
       return a
-    }, {})
+    }, {} as ErrorMessages)
   }
 
   export default Vue.extend({
@@ -88,9 +89,8 @@
       ErrorFormWrapper,
     },
     async created () {
-      this.status  = Status.Preparing
-      const result = await loadAndCompile() as CompilationResult
-      Object.assign(this, result)
+      this.status = Status.Preparing
+      Object.assign(this, await loadAndCompile())
       this.status = Status.Ready
     },
     data (): {
@@ -131,8 +131,9 @@
     methods: {
       reset () {
         Object.assign(this, initialData())
+        this.status = Status.Ready
       },
-      async validate () {
+      async validate (): Promise<ValidationResult> {
         const {
                 name,
                 email,
@@ -152,7 +153,7 @@
                 body,
               } = this
 
-        const { valid, errors }: ValidationResult = await this.validate()
+        const { valid, errors } = await this.validate()
 
         if (!valid) {
           this.errors = errors
@@ -161,13 +162,10 @@
 
         this.status = Status.Sending
         try {
-          await ax.post(
-            'http://localhost:1323/api/messages',
-            { name, email, body },
-          )
+          await createMessage({ name, email, body })
           this.errors = []
           this.status = Status.Sent
-        } catch ({ response: { data: { errors } } }) {
+        } catch ({ data: { errors } }) {
           this.errors = errors
           this.status = Status.Ready
         }

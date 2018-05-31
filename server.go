@@ -36,7 +36,7 @@ func createMessage(c echo.Context) error {
 
 	if result.Valid {
 		store = append(store, *message)
-		return c.JSON(http.StatusCreated, result)
+		return c.JSON(http.StatusCreated, data.MessageCreationResult{ID: 1})
 	} else {
 		return c.JSON(http.StatusBadRequest, result)
 	}

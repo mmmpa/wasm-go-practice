@@ -10,6 +10,10 @@ type Message struct {
 	Body  string `json:"body" validate:"required"`
 }
 
+type MessageCreationResult struct {
+	ID int `json:"id"`
+}
+
 type ValidationError struct {
 	Field  string `json:"field"`
 	Reason string `json:"reason"`
